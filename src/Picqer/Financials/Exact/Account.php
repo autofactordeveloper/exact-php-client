@@ -21,6 +21,7 @@
  * @property Guid $BusinessType Reference to the business type of the account
  * @property Boolean $CanDropShip Indicates the default for the possibility to drop ship when an item is linked to a supplier
  * @property String $ChamberOfCommerce Chamber of commerce number
+ * @property String $ChamberOfCommerceEstablishment
  * @property String $City Visit address City
  * @property Guid $Classification1 Account classification 1
  * @property Guid $Classification2 Account classification 2
@@ -147,6 +148,7 @@ class Account extends Model
         'BusinessType',
         'CanDropShip',
         'ChamberOfCommerce',
+        'ChamberOfCommerceEstablishment',
         'City',
         'Classification1',
         'Classification2',
