@@ -1,4 +1,6 @@
-<?php namespace Picqer\Financials\Exact;
+<?php
+
+namespace Picqer\Financials\Exact;
 
 use Exception;
 use GuzzleHttp\Client;
@@ -7,6 +9,7 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7;
+
 
 /**
  * Class Connection
@@ -41,10 +44,9 @@ class Connection
      */
     private $exactClientId;
 
-    /**
-     * @var
-     */
+
     private $exactClientSecret;
+
 
     /**
      * @var
@@ -56,10 +58,6 @@ class Connection
      */
     private $accessToken;
 
-    /**
-     * @var
-     */
-    private $tokenExpires;
 
     /**
      * @var
@@ -81,10 +79,6 @@ class Connection
      */
     private $client;
     
-    /**
-     * @var callable(Connection)
-     */
-    private $tokenUpdateCallback;
 
     /**
      *
@@ -96,6 +90,19 @@ class Connection
     * @var
     */
     public $nextUrl = null;
+
+    private $token_provider = null;
+
+
+    /**
+     * Connection constructor.
+     * @param null $token_provider
+     */
+    public function __construct(TokenProvider $token_provider = null)
+    {
+        $this->token_provider = $token_provider;
+    }
+
 
     /**
      * @return Client
@@ -119,27 +126,32 @@ class Connection
         return $this->client;
     }
 
+
     public function insertMiddleWare($middleWare)
     {
         $this->middleWares[] = $middleWare;
     }
 
+
     public function connect()
     {
+        $this->acquireAccessTokenFromProvider();
+
         // Redirect for authorization if needed (no access token or refresh token given)
         if ($this->needsAuthentication()) {
-            $this->redirectForAuthorization();
+            throw new ApiException('Exact Not Authenticated');
         }
 
-        // If access token is not set or token has expired, acquire new token
-        if (empty($this->accessToken) || $this->tokenHasExpired()) {
-            $this->acquireAccessToken();
+        // If access token is not set acquire new token
+        if (empty($this->accessToken)) {
+
         }
 
         $client = $this->client();
 
         return $client;
     }
+
 
     /**
      * @param string $method
@@ -157,10 +169,7 @@ class Connection
             'Content-Type' => 'application/json'
         ]);
 
-        // If access token is not set or token has expired, acquire new token
-        if (empty($this->accessToken) || $this->tokenHasExpired()) {
-            $this->acquireAccessToken();
-        }
+        $this->acquireAccessTokenFromProvider();
 
         // If we have a token, sign the request
         if (!$this->needsAuthentication() && !empty($this->accessToken)) {
@@ -177,6 +186,7 @@ class Connection
 
         return $request;
     }
+
 
     /**
      * @param $url
@@ -198,6 +208,7 @@ class Connection
         }
     }
 
+
     /**
      * @param $url
      * @param $body
@@ -217,6 +228,7 @@ class Connection
             $this->parseExceptionForErrorMessages($e);
         }
     }
+
 
     /**
      * @param $url
@@ -238,6 +250,7 @@ class Connection
         }
     }
 
+
     /**
      * @param $url
      * @return mixed
@@ -257,6 +270,7 @@ class Connection
         }
     }
 
+
     /**
      * @return string
      */
@@ -269,56 +283,7 @@ class Connection
         ));
     }
 
-    /**
-     * @param mixed $exactClientId
-     */
-    public function setExactClientId($exactClientId)
-    {
-        $this->exactClientId = $exactClientId;
-    }
 
-    /**
-     * @param mixed $exactClientSecret
-     */
-    public function setExactClientSecret($exactClientSecret)
-    {
-        $this->exactClientSecret = $exactClientSecret;
-    }
-
-    /**
-     * @param mixed $authorizationCode
-     */
-    public function setAuthorizationCode($authorizationCode)
-    {
-        $this->authorizationCode = $authorizationCode;
-    }
-
-    /**
-     * @param mixed $accessToken
-     */
-    public function setAccessToken($accessToken)
-    {
-        $this->accessToken = $accessToken;
-    }
-
-    /**
-     * @param mixed $refreshToken
-     */
-    public function setRefreshToken($refreshToken)
-    {
-        $this->refreshToken = $refreshToken;
-    }
-
-
-    /**
-     *
-     */
-    public function redirectForAuthorization()
-    {
-        $authUrl = $this->getAuthUrl();
-        header('Location: ' . $authUrl);
-        exit;
-    }
 
     /**
      * @param mixed $redirectUrl
@@ -328,6 +293,7 @@ class Connection
         $this->redirectUrl = $redirectUrl;
     }
 
+
     /**
      * @return bool
      */
@@ -335,6 +301,7 @@ class Connection
     {
         return empty($this->refreshToken) && empty($this->authorizationCode);
     }
+
 
     /**
      * @param Response $response
@@ -389,6 +356,7 @@ class Connection
         return $this->division;
     }
 
+
     /**
      * @return mixed
      */
@@ -396,6 +364,7 @@ class Connection
     {
         return $this->refreshToken;
     }
+
 
     /**
      * @return mixed
@@ -405,7 +374,60 @@ class Connection
         return $this->accessToken;
     }
 
-    private function acquireAccessToken()
+
+    private function acquireAccessTokenFromProvider()
+    {
+        if ($this->token_provider) {
+            $this->accessToken = $this->token_provider->getAccessToken();
+            $this->refreshToken = $this->token_provider->getRefreshToken();
+            $this->authorizationCode = $this->token_provider->getAuthorizationCode();
+        }
+    }
+
+
+    /**
+     * @param mixed $authorizationCode
+     */
+    public function setAuthorizationCode($authorizationCode)
+    {
+        $this->authorizationCode = $authorizationCode;
+    }
+
+    /**
+     * @param mixed $refreshToken
+     */
+    public function setRefreshToken($refreshToken)
+    {
+        $this->refreshToken = $refreshToken;
+    }
+
+    /**
+     * @param mixed $exactClientId
+     */
+    public function setExactClientId($exactClientId)
+    {
+        $this->exactClientId = $exactClientId;
+    }
+
+    /**
+     * @param mixed $exactClientSecret
+     */
+    public function setExactClientSecret($exactClientSecret)
+    {
+        $this->exactClientSecret = $exactClientSecret;
+    }
+
+
+    /**
+     * @return string
+     */
+    private function getTokenUrl()
+    {
+        return $this->baseUrl . $this->tokenUrl;
+    }
+
+
+    public function acquireAccessToken()
     {
         // If refresh token not yet acquired, do token request
         if (empty($this->refreshToken)) {
@@ -438,11 +460,6 @@ class Connection
             if (json_last_error() === JSON_ERROR_NONE) {
                 $this->accessToken  = $body['access_token'];
                 $this->refreshToken = $body['refresh_token'];
-                $this->tokenExpires = $this->getDateTimeFromExpires($body['expires_in']);
-                
-                if (is_callable($this->tokenUpdateCallback)) {
-                    call_user_func($this->tokenUpdateCallback, $this);                    
-                }
             } else {
                 throw new ApiException('Could not acquire tokens, json decode failed. Got response: ' . $response->getBody()->getContents());
             }
@@ -451,40 +468,6 @@ class Connection
         }
     }
 
-
-    private function getDateTimeFromExpires($expires)
-    {
-        if (!is_numeric($expires)) {
-            throw new \InvalidArgumentException('Function requires a numeric expires value');
-        }
-
-        return time() + 600;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getTokenExpires()
-    {
-        return $this->tokenExpires;
-    }
-
-    /**
-     * @param mixed $tokenExpires
-     */
-    public function setTokenExpires($tokenExpires)
-    {
-        $this->tokenExpires = $tokenExpires;
-    }
-
-    private function tokenHasExpired()
-    {
-        if (empty($this->tokenExpires)) {
-            return true;
-        }
-
-        return $this->tokenExpires <= time();
-    }
 
     private function formatUrl($endPoint, $includeDivision = true, $formatNextUrl = false)
     {
@@ -524,13 +507,6 @@ class Connection
         $this->division = $division;
     }
     
-    /**
-     * @param callable $callback
-     */
-    public function setTokenUpdateCallback($callback) {
-        $this->tokenUpdateCallback = $callback;
-    }
-
 
     /**
      * Parse the reponse in the Exception to return the Exact error messages
@@ -573,13 +549,6 @@ class Connection
         return $this->baseUrl . $this->apiUrl;
     }
 
-    /**
-     * @return string
-     */
-    private function getTokenUrl()
-    {
-        return $this->baseUrl . $this->tokenUrl;
-    }
 
     /**
      * Set base URL for different countries according to
@@ -592,6 +561,7 @@ class Connection
         $this->baseUrl = $baseUrl;
     }
 
+
     /**
      * @param string $apiUrl
      */
@@ -600,6 +570,7 @@ class Connection
         $this->apiUrl = $apiUrl;
     }
 
+
     /**
      * @param string $authUrl
      */
@@ -607,6 +578,7 @@ class Connection
     {
         $this->authUrl = $authUrl;
     }
+
 
     /**
      * @param string $tokenUrl
