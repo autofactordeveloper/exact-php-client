@@ -108,7 +108,9 @@ trait Findable
         }
         $collection = [ ];
         foreach ($result as $r) {
-            $collection[] = new self($this->connection(), $r);
+            if (is_array($r)) {
+                $collection[] = new self($this->connection(), $r);
+            }
         }
 
         return $collection;
