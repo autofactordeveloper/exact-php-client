@@ -1,5 +1,5 @@
 {
-    "name": "ffogarasi/exact-php-client",
+    "name": "autofactordeveloper/exact-php-client",
     "type": "library",
     "description": "A PHP Client for the Exact API",
     "keywords": [
@@ -7,7 +7,7 @@
         "php",
         "exact"
     ],
-    "homepage": "http://github.com/ffogarasi/exact-php-client",
+    "homepage": "http://github.com/autofactordeveloper/exact-php-client",
     "license": "MIT",
     "authors": [
         {
