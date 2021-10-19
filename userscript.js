@@ -5,6 +5,7 @@
 // @include     https://start.exactonline.nl/docs/HlpRestAPIResourcesDetails.aspx?*
 // @version     1
 // @grant       none
+// @require https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js
 // ==/UserScript==
 
 (function() {
